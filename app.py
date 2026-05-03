@@ -1,10 +1,322 @@
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, jsonify, render_template_string, request, send_from_directory
 import threading
 import os
 import pipeline
 from pathlib import Path
 
 app = Flask(__name__)
+
+INDEX_HTML = """
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShortTools</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101418;
+      --panel: #182029;
+      --panel-2: #22303d;
+      --line: #314355;
+      --text: #edf3f8;
+      --muted: #9db0c2;
+      --accent: #3fbf9a;
+      --danger: #ff7b72;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #0f1419, #17202a 45%, #101418);
+      color: var(--text);
+    }
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+    p {
+      color: var(--muted);
+      margin: 0 0 18px;
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .card {
+      background: rgba(24, 32, 41, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    }
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+    textarea, select, input, button {
+      width: 100%;
+      font: inherit;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+    }
+    textarea, select, input[type="file"] {
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 12px;
+    }
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+    }
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
+    button {
+      background: var(--accent);
+      color: #082018;
+      font-weight: 700;
+      padding: 11px 14px;
+      cursor: pointer;
+      margin-top: 14px;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .row > * {
+      flex: 1;
+    }
+    .status {
+      min-height: 22px;
+      margin-top: 10px;
+      color: var(--muted);
+    }
+    .error { color: var(--danger); }
+    .result {
+      margin-top: 14px;
+      display: none;
+    }
+    .result.show {
+      display: block;
+    }
+    audio {
+      width: 100%;
+      margin: 12px 0;
+    }
+    pre {
+      margin: 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: #0f1419;
+      border: 1px solid var(--line);
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    ul {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+    li {
+      margin: 6px 0;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>ShortTools</h1>
+    <p>Generate voiceovers, preview voices, upload existing media, and export subtitles from one lightweight page.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Generate</h2>
+        <label for="voice">Voice</label>
+        <div class="row">
+          <select id="voice"></select>
+          <button id="preview-btn" class="secondary" type="button">Preview</button>
+        </div>
+
+        <label for="speed">Speed <span id="speed-value">1.0</span></label>
+        <input id="speed" type="range" min="0.7" max="1.3" step="0.05" value="1.0">
+
+        <label for="script">Script</label>
+        <textarea id="script" placeholder="Paste your script here"></textarea>
+
+        <button id="generate-btn" type="button">Generate Audio + Subtitles</button>
+        <div id="generate-status" class="status"></div>
+
+        <div id="generate-result" class="result">
+          <audio id="generated-audio" controls></audio>
+          <pre id="generated-srt"></pre>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Upload</h2>
+        <label for="upload">Audio or Video File</label>
+        <input id="upload" type="file" accept="audio/*,video/*">
+
+        <button id="upload-btn" type="button">Transcribe Upload</button>
+        <div id="upload-status" class="status"></div>
+
+        <div id="upload-result" class="result">
+          <audio id="uploaded-audio" controls></audio>
+          <pre id="uploaded-srt"></pre>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px;">
+      <h2>History</h2>
+      <p>Click an item to reopen its audio and subtitle output.</p>
+      <ul id="history-list"></ul>
+    </section>
+  </main>
+
+  <script>
+    const voiceEl = document.getElementById("voice");
+    const speedEl = document.getElementById("speed");
+    const speedValueEl = document.getElementById("speed-value");
+    const historyEl = document.getElementById("history-list");
+
+    function setStatus(id, message, isError = false) {
+      const el = document.getElementById(id);
+      el.textContent = message;
+      el.className = isError ? "status error" : "status";
+    }
+
+    async function loadVoices() {
+      const res = await fetch("/api/voices");
+      const groups = await res.json();
+      voiceEl.innerHTML = "";
+      for (const [label, voices] of Object.entries(groups)) {
+        const optgroup = document.createElement("optgroup");
+        optgroup.label = label;
+        for (const voice of voices) {
+          const option = document.createElement("option");
+          option.value = voice;
+          option.textContent = voice;
+          optgroup.appendChild(option);
+        }
+        voiceEl.appendChild(optgroup);
+      }
+    }
+
+    async function loadHistory() {
+      const res = await fetch("/api/files");
+      const files = await res.json();
+      historyEl.innerHTML = "";
+      if (!files.length) {
+        historyEl.innerHTML = "<li>No saved files yet.</li>";
+        return;
+      }
+      for (const file of files.slice().reverse()) {
+        const item = document.createElement("li");
+        item.textContent = file.audio + (file.subtitle ? " | " + file.subtitle : "");
+        item.addEventListener("click", async () => {
+          document.getElementById("generated-audio").src = "/audio/" + file.audio + "?t=" + Date.now();
+          document.getElementById("generate-result").classList.add("show");
+          if (file.subtitle) {
+            const subtitleRes = await fetch("/subtitles/" + file.subtitle + "?t=" + Date.now());
+            document.getElementById("generated-srt").textContent = await subtitleRes.text();
+          }
+        });
+        historyEl.appendChild(item);
+      }
+    }
+
+    speedEl.addEventListener("input", () => {
+      speedValueEl.textContent = speedEl.value;
+    });
+
+    document.getElementById("preview-btn").addEventListener("click", async () => {
+      const res = await fetch("/api/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice: voiceEl.value, speed: Number(speedEl.value) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus("generate-status", data.error || "Preview failed", true);
+        return;
+      }
+      const audio = new Audio("/previews/" + data.file + "?t=" + Date.now());
+      audio.play();
+      setStatus("generate-status", "Preview ready.");
+    });
+
+    document.getElementById("generate-btn").addEventListener("click", async () => {
+      const text = document.getElementById("script").value.trim();
+      if (!text) {
+        setStatus("generate-status", "Enter a script first.", true);
+        return;
+      }
+      setStatus("generate-status", "Generating...");
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: voiceEl.value, speed: Number(speedEl.value) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus("generate-status", data.error || "Generation failed", true);
+        return;
+      }
+      document.getElementById("generated-audio").src = "/audio/" + data.audio + "?t=" + Date.now();
+      document.getElementById("generated-srt").textContent = data.srt;
+      document.getElementById("generate-result").classList.add("show");
+      setStatus("generate-status", "Saved " + data.audio);
+      loadHistory();
+    });
+
+    document.getElementById("upload-btn").addEventListener("click", async () => {
+      const file = document.getElementById("upload").files[0];
+      if (!file) {
+        setStatus("upload-status", "Choose a file first.", true);
+        return;
+      }
+      setStatus("upload-status", "Transcribing...");
+      const form = new FormData();
+      form.append("audio", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus("upload-status", data.error || "Upload failed", true);
+        return;
+      }
+      document.getElementById("uploaded-audio").src = "/audio/" + data.audio + "?t=" + Date.now();
+      document.getElementById("uploaded-srt").textContent = data.srt;
+      document.getElementById("upload-result").classList.add("show");
+      setStatus("upload-status", "Saved " + data.audio);
+      loadHistory();
+    });
+
+    loadVoices();
+    loadHistory();
+  </script>
+</body>
+</html>
+"""
 
 BASE_DIR = os.path.dirname(__file__)
 AUDIO_DIR = os.path.join(BASE_DIR, "audio")
@@ -54,7 +366,7 @@ def _pregenerate_previews():
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template_string(INDEX_HTML)
 
 
 @app.route("/api/voices")

@@ -1,6 +1,12 @@
 __pycache__/
 *.pyc
 
+.claude/
 audio/
 subtitles/
 uploads/
+background/
+Potential Scripts/
+*.docx
+kokoro-v1.0.int8.onnx
+voices-v1.0.bin
