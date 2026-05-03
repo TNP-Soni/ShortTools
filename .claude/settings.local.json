@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python transcribe.py audio/audio_001.mp3)",
+      "Bash(winget install:*)",
+      "Bash(where ffmpeg:*)",
+      "Bash(python json_to_srt.py transcripts/transcript_001.json)",
+      "Bash(python -c ':*)",
+      "Bash(grep -E \"\\\\.\\(py|js|html|css|json\\)$\")",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(pip show:*)",
+      "Bash(pip list:*)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"import kokoro_onnx; help\\(kokoro_onnx.Kokoro.__init__\\)\")",
+      "Bash(python -c \"import kokoro_onnx; help\\(kokoro_onnx.Kokoro.create\\)\")",
+      "Bash(python -c \"import kokoro_onnx; import inspect; print\\(inspect.getfile\\(kokoro_onnx\\)\\)\")",
+      "Bash(python -c \"import urllib.request, json; data = urllib.request.urlopen\\('https://api.github.com/repos/thewh1teagle/kokoro-onnx/releases/tags/model-files-v1.0'\\).read\\(\\); releases = json.loads\\(data\\); [print\\(a['name'], a['browser_download_url']\\) for a in releases['assets']]\")",
+      "Bash(python -c \"import orpheus_tts; help\\(orpheus_tts\\)\")",
+      "Bash(python -c \"from orpheus_tts import OrpheusClient; help\\(OrpheusClient\\)\")",
+      "Bash(python -c \"import orpheus_tts; print\\(orpheus_tts.VOICES\\)\")",
+      "Bash(python -c \"import torch; print\\(torch.cuda.is_available\\(\\)\\); print\\(torch.cuda.get_device_name\\(0\\) if torch.cuda.is_available\\(\\) else 'no cuda'\\); print\\(f'{torch.cuda.get_device_properties\\(0\\).total_memory / 1024**3:.1f} GB' if torch.cuda.is_available\\(\\) else ''\\)\")",
+      "Bash(python -c \"import torch; print\\(torch.__version__\\)\")",
+      "Bash(nvidia-smi)",
+      "WebFetch(domain:bitbasti.com)",
+      "WebFetch(domain:docs.parasail.io)",
+      "Bash(python -c \"import torch; print\\(torch.__version__\\); print\\(torch.version.cuda\\)\")",
+      "Bash(python -c \"import torch; print\\(torch.cuda.is_available\\(\\)\\); print\\(torch.cuda.get_device_name\\(0\\)\\)\")",
+      "Bash(python -c \"from huggingface_hub import login; login\\(\\)\")",
+      "Bash(python -c \"from kokoro_onnx import Kokoro; help\\(Kokoro\\)\")"
+    ]
+  }
+}

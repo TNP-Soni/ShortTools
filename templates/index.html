@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shorts Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e11;
+      --surface: #18181c;
+      --surface2: #222228;
+      --border: #2e2e38;
+      --accent: #7c6af7;
+      --accent-dim: #4e45a0;
+      --text: #e8e8f0;
+      --muted: #888899;
+      --danger: #f75a5a;
+      --success: #4ec97a;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 { font-size: 18px; font-weight: 600; letter-spacing: .3px; }
+    header span { color: var(--accent); font-size: 20px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 0;
+      height: calc(100vh - 57px);
+    }
+
+    .main { padding: 24px 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+    .sidebar { border-left: 1px solid var(--border); overflow-y: auto; }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* Form elements */
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; margin-top: 14px; }
+    label:first-of-type { margin-top: 0; }
+
+    textarea, select, input[type=range] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      transition: border-color .15s;
+    }
+    textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+    textarea { padding: 10px 12px; resize: vertical; min-height: 140px; }
+    select { padding: 8px 10px; cursor: pointer; }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: var(--surface2);
+      border: none;
+      border-radius: 2px;
+      padding: 0;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+    .range-row { display: flex; align-items: center; gap: 10px; }
+    .range-row input { flex: 1; }
+    .range-val { font-size: 12px; color: var(--muted); min-width: 28px; text-align: right; }
+
+    /* Buttons */
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 9px 18px;
+      transition: opacity .15s, background .15s;
+    }
+    button:disabled { opacity: .45; cursor: default; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:not(:disabled):hover { background: #8d7ef8; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:not(:disabled):hover { border-color: var(--accent); }
+    .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+
+    /* Drop zone */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      color: var(--muted);
+    }
+    .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: #7c6af710; }
+    .dropzone input { display: none; }
+    .dropzone .dz-icon { font-size: 28px; margin-bottom: 6px; }
+    .dropzone .dz-label { font-size: 13px; }
+    .dropzone .dz-chosen { font-size: 13px; color: var(--text); margin-top: 6px; font-weight: 500; }
+
+    /* Result */
+    .result-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: none;
+    }
+    .result-box.show { display: block; }
+    .result-box audio { width: 100%; margin-bottom: 12px; }
+    .result-box .srt-preview {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre;
+      overflow: auto;
+      max-height: 200px;
+      color: var(--muted);
+    }
+    .result-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+
+    /* Status / error */
+    .status { font-size: 13px; margin-top: 10px; min-height: 20px; }
+    .status.loading { color: var(--muted); }
+    .status.error { color: var(--danger); }
+    .status.ok { color: var(--success); }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    /* Sidebar — history */
+    .sidebar-title {
+      padding: 16px 18px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .sidebar-toolbar button {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    .history-list { padding: 8px 0; }
+    .history-item {
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .12s;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .history-item:hover { background: var(--surface2); }
+    .history-item.active { background: #7c6af715; border-left: 2px solid var(--accent); }
+    .history-item input[type=checkbox] {
+      margin-top: 2px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .history-item .hi-body {
+      min-width: 0;
+      flex: 1;
+    }
+    .history-item .hi-name { font-weight: 500; font-size: 13px; }
+    .history-item .hi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .history-empty { padding: 20px 18px; color: var(--muted); font-size: 13px; }
+
+    audio { accent-color: var(--accent); }
+
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { border-left: none; border-top: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>🎙</span>
+  <h1>Shorts Tools</h1>
+</header>
+
+<div class="layout">
+  <div class="main">
+
+    <!-- Generate -->
+    <div class="card">
+      <div class="card-title">Generate Audio</div>
+
+      <label for="voice-select">Voice</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="voice-select" style="flex:1;">
+          <option value="">Loading voices…</option>
+        </select>
+        <button class="btn-secondary" id="preview-btn" title="Preview voice" style="white-space:nowrap;padding:8px 14px;">▶ Preview</button>
+      </div>
+      <audio id="preview-audio" style="display:none;width:100%;margin-top:8px;" controls></audio>
+
+      <label for="speed-range">Speed</label>
+      <div class="range-row">
+        <input type="range" id="speed-range" min="0.5" max="2" step="0.05" value="1" />
+        <span class="range-val" id="speed-val">1.0×</span>
+      </div>
+
+      <label for="script-text">Script</label>
+      <textarea id="script-text" placeholder="Paste your script here…"></textarea>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="gen-btn">Generate</button>
+      </div>
+      <div class="status" id="gen-status"></div>
+    </div>
+
+    <!-- Generate result -->
+    <div class="result-box" id="gen-result">
+      <div class="result-label">Generated Audio</div>
+      <audio id="gen-audio" controls></audio>
+      <div class="result-label">Subtitles (SRT)</div>
+      <div class="srt-preview" id="gen-srt"></div>
+      <div class="btn-row">
+        <button class="btn-secondary" id="copy-srt-btn">Copy SRT</button>
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="card">
+      <div class="card-title">Upload &amp; Transcribe</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">Upload an existing audio or video file to generate subtitles from it.</p>
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="upload-input" accept="audio/*,video/*" />
+        <div class="dz-icon">📂</div>
+        <div class="dz-label">Click or drag an audio or video file here</div>
+        <div class="dz-chosen" id="dz-chosen"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="upload-btn" disabled>Transcribe</button>
+      </div>
+      <div class="status" id="upload-status"></div>
+    </div>
+
+    <!-- Upload result -->
+    <div class="result-box" id="upload-result">
+      <div class="result-label" id="upload-media-label">Uploaded File</div>
+      <audio id="upload-audio" controls style="display:none"></audio>
+      <video id="upload-video" controls style="display:none;max-width:100%"></video>
+      <div class="result-label">Subtitles (SRT)</div>
+      <div class="srt-preview" id="upload-srt"></div>
+      <div class="btn-row">
+        <button class="btn-secondary" id="copy-upload-srt-btn">Copy SRT</button>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-title">History</div>
+    <div class="sidebar-toolbar">
+      <button class="btn-secondary" id="select-all-btn">Select All</button>
+      <button class="btn-secondary" id="delete-selected-btn" disabled>Delete Selected</button>
+      <button class="btn-secondary" id="empty-all-btn" disabled>Empty All</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="history-empty">No files yet.</div>
+    </div>
+  </div>
+</div><!-- /layout -->
+
+<script>
+  // --- Voices ---
+  async function loadVoices() {
+    const sel = document.getElementById('voice-select');
+    try {
+      const res = await fetch('/api/voices');
+      const groups = await res.json();
+      sel.innerHTML = '';
+      for (const [group, voices] of Object.entries(groups)) {
+        const og = document.createElement('optgroup');
+        og.label = group;
+        for (const v of voices) {
+          const o = document.createElement('option');
+          o.value = v;
+          o.textContent = v;
+          if (v === 'af_bella') o.selected = true;
+          og.appendChild(o);
+        }
+        sel.appendChild(og);
+      }
+    } catch (e) {
+      sel.innerHTML = '<option value="af_bella">af_bella</option>';
+    }
+  }
+
+  // --- Speed slider ---
+  const speedRange = document.getElementById('speed-range');
+  const speedVal = document.getElementById('speed-val');
+  speedRange.addEventListener('input', () => {
+    speedVal.textContent = parseFloat(speedRange.value).toFixed(2).replace(/\.?0+$/, '') + '×';
+  });
+
+  // --- Preview pre-generation status ---
+  const readyVoices = new Set();
+
+  async function pollPreviews() {
+    try {
+      const res = await fetch('/api/previews_ready');
+      const voices = await res.json();
+      voices.forEach(v => readyVoices.add(v));
+      updatePreviewBtn();
+      if (readyVoices.size < 23) setTimeout(pollPreviews, 3000);
+    } catch {}
+  }
+
+  function updatePreviewBtn() {
+    const voice = document.getElementById('voice-select').value;
+    const btn = document.getElementById('preview-btn');
+    if (readyVoices.has(voice)) {
+      btn.style.borderColor = 'var(--success)';
+      btn.title = 'Preview ready';
+    } else {
+      btn.style.borderColor = '';
+      btn.title = 'Generating preview in background…';
+    }
+  }
+
+  document.getElementById('voice-select').addEventListener('change', updatePreviewBtn);
+
+  // --- Preview ---
+  document.getElementById('preview-btn').addEventListener('click', async () => {
+    const voice = document.getElementById('voice-select').value;
+    const speed = parseFloat(speedRange.value);
+    const btn = document.getElementById('preview-btn');
+    const audio = document.getElementById('preview-audio');
+    if (!voice) return;
+
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch('/api/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice, speed }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      audio.src = '/previews/' + data.file + '?t=' + Date.now();
+      audio.style.display = 'block';
+      audio.play();
+      readyVoices.add(voice);
+    } catch (e) {
+      alert('Preview failed: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '▶ Preview';
+      updatePreviewBtn();
+    }
+  });
+
+  // --- Generate ---
+  document.getElementById('gen-btn').addEventListener('click', async () => {
+    const text = document.getElementById('script-text').value.trim();
+    const voice = document.getElementById('voice-select').value;
+    const speed = parseFloat(speedRange.value);
+    const btn = document.getElementById('gen-btn');
+    const status = document.getElementById('gen-status');
+
+    if (!text) { setStatus(status, 'error', 'Please enter a script.'); return; }
+
+    btn.disabled = true;
+    setStatus(status, 'loading', 'Generating audio… this may take a moment.');
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice, speed }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unknown error');
+
+      document.getElementById('gen-audio').src = '/audio/' + data.audio + '?t=' + Date.now();
+      document.getElementById('gen-srt').textContent = data.srt;
+      document.getElementById('gen-result').classList.add('show');
+      setStatus(status, 'ok', `Saved as ${data.audio} / sub_${String(data.n).padStart(3,'0')}.srt`);
+      loadHistory();
+    } catch (e) {
+      setStatus(status, 'error', e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('copy-srt-btn').addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('gen-srt').textContent);
+  });
+
+  // --- Dropzone ---
+  let uploadFile = null;
+  const dropzone = document.getElementById('dropzone');
+  const uploadInput = document.getElementById('upload-input');
+  const uploadBtn = document.getElementById('upload-btn');
+  const dzChosen = document.getElementById('dz-chosen');
+
+  dropzone.addEventListener('click', () => uploadInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (file) setUploadFile(file);
+  });
+  uploadInput.addEventListener('change', () => {
+    if (uploadInput.files[0]) setUploadFile(uploadInput.files[0]);
+  });
+
+  function setUploadFile(file) {
+    uploadFile = file;
+    dzChosen.textContent = file.name;
+    uploadBtn.disabled = false;
+  }
+
+  uploadBtn.addEventListener('click', async () => {
+    if (!uploadFile) return;
+    const status = document.getElementById('upload-status');
+    uploadBtn.disabled = true;
+    setStatus(status, 'loading', 'Transcribing… this may take a moment.');
+
+    const form = new FormData();
+    form.append('audio', uploadFile);
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unknown error');
+
+      const mediaUrl = URL.createObjectURL(uploadFile);
+      const isVideo = uploadFile.type.startsWith('video/');
+      const audioEl = document.getElementById('upload-audio');
+      const videoEl = document.getElementById('upload-video');
+      audioEl.style.display = isVideo ? 'none' : '';
+      videoEl.style.display = isVideo ? '' : 'none';
+      document.getElementById('upload-media-label').textContent = isVideo ? 'Uploaded Video' : 'Uploaded Audio';
+      (isVideo ? videoEl : audioEl).src = mediaUrl;
+      document.getElementById('upload-srt').textContent = data.srt;
+      document.getElementById('upload-result').classList.add('show');
+      setStatus(status, 'ok', `Saved as ${data.audio} / sub_${String(data.n).padStart(3,'0')}.srt`);
+      loadHistory();
+    } catch (e) {
+      setStatus(status, 'error', e.message);
+    } finally {
+      uploadBtn.disabled = false;
+    }
+  });
+
+  document.getElementById('copy-upload-srt-btn').addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('upload-srt').textContent);
+  });
+
+  // --- History ---
+  const selectedHistory = new Set();
+
+  function syncHistoryButtons(totalCount = document.querySelectorAll('.history-item').length) {
+    const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+    const emptyAllBtn = document.getElementById('empty-all-btn');
+    deleteSelectedBtn.disabled = selectedHistory.size === 0;
+    emptyAllBtn.disabled = totalCount === 0;
+  }
+
+  async function deleteHistory(mode) {
+    const status = document.getElementById('gen-status');
+    const isDeleteAll = mode === 'all';
+    const files = [...selectedHistory];
+
+    if (!isDeleteAll && !files.length) return;
+
+    const confirmed = window.confirm(
+      isDeleteAll
+        ? 'Delete every audio file in history and its matching subtitle file?'
+        : `Delete ${files.length} selected audio file(s) and their matching subtitle file(s)?`
+    );
+    if (!confirmed) return;
+
+    const endpoint = isDeleteAll ? '/api/files/delete_all' : '/api/files/delete';
+    const options = isDeleteAll
+      ? { method: 'POST' }
+      : {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files }),
+        };
+
+    setStatus(status, 'loading', isDeleteAll ? 'Deleting all history…' : 'Deleting selected files…');
+
+    try {
+      const res = await fetch(endpoint, options);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Delete failed');
+
+      selectedHistory.clear();
+      document.querySelectorAll('.history-item.active').forEach(item => item.classList.remove('active'));
+      document.getElementById('gen-result').classList.remove('show');
+      document.getElementById('gen-audio').removeAttribute('src');
+      document.getElementById('gen-srt').textContent = '';
+
+      const deletedCount = (data.deleted || []).length;
+      const errorCount = (data.errors || []).length;
+      setStatus(
+        status,
+        errorCount ? 'error' : 'ok',
+        errorCount ? `Deleted ${deletedCount} item(s), ${errorCount} failed.` : `Deleted ${deletedCount} item(s).`
+      );
+      loadHistory();
+    } catch (e) {
+      setStatus(status, 'error', e.message);
+    }
+  }
+
+  document.getElementById('select-all-btn').addEventListener('click', () => {
+    const checkboxes = [...document.querySelectorAll('.history-item input[type="checkbox"]')];
+    if (!checkboxes.length) return;
+
+    const shouldSelectAll = selectedHistory.size !== checkboxes.length;
+    selectedHistory.clear();
+    checkboxes.forEach(cb => {
+      cb.checked = shouldSelectAll;
+      if (shouldSelectAll) selectedHistory.add(cb.value);
+    });
+    syncHistoryButtons(checkboxes.length);
+  });
+
+  document.getElementById('delete-selected-btn').addEventListener('click', () => deleteHistory('selected'));
+  document.getElementById('empty-all-btn').addEventListener('click', () => deleteHistory('all'));
+
+  async function loadHistory() {
+    const list = document.getElementById('history-list');
+    try {
+      const res = await fetch('/api/files');
+      const files = await res.json();
+      if (!files.length) {
+        selectedHistory.clear();
+        list.innerHTML = '<div class="history-empty">No files yet.</div>';
+        syncHistoryButtons(0);
+        return;
+      }
+      list.innerHTML = '';
+      for (const f of [...files].reverse()) {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+          <input type="checkbox" value="${f.audio}" ${selectedHistory.has(f.audio) ? 'checked' : ''} />
+          <div class="hi-body">
+            <div class="hi-name">${f.audio}</div>
+            <div class="hi-sub">${f.subtitle || 'no subtitle'}</div>
+          </div>
+        `;
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        checkbox.addEventListener('click', e => e.stopPropagation());
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedHistory.add(f.audio);
+          else selectedHistory.delete(f.audio);
+          syncHistoryButtons(files.length);
+        });
+        item.addEventListener('click', () => {
+          document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          document.getElementById('gen-audio').src = '/audio/' + f.audio + '?t=' + Date.now();
+          if (f.subtitle) {
+            fetch('/subtitles/' + f.subtitle).then(r => r.text()).then(t => {
+              document.getElementById('gen-srt').textContent = t;
+            });
+          }
+          document.getElementById('gen-result').classList.add('show');
+          document.getElementById('gen-result').scrollIntoView({ behavior: 'smooth' });
+        });
+        list.appendChild(item);
+      }
+      syncHistoryButtons(files.length);
+    } catch (e) {
+      list.innerHTML = '<div class="history-empty">Could not load history.</div>';
+      syncHistoryButtons(0);
+    }
+  }
+
+  // --- Helpers ---
+  function setStatus(el, type, msg) {
+    el.className = 'status ' + type;
+    el.innerHTML = type === 'loading' ? `<span class="spinner"></span>${msg}` : msg;
+  }
+
+  // Init
+  loadVoices();
+  loadHistory();
+  pollPreviews();
+</script>
+</body>
+</html>
